@@ -1,8 +1,6 @@
 from streamlit_folium import st_folium
 import geopandas as gpd
 import streamlit as st
-st.title("Sanity Check")
-st.write("If you can see this, the cloud is working and the map is what crashed it.")
 
 USGS_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson"
 PLATES_URL = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json"
