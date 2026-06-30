@@ -1,7 +1,52 @@
+from streamlit_folium import st_folium
+import geopandas as gpd
+import streamlit as st
+st.title("Sanity Check")
+st.write("If you can see this, the cloud is working and the map is what crashed it.")
 
-x = int(3)
-y = str(3)
-z = float(3)
-print(x, y, z)
-print(float(67))
-print(type(x))
+USGS_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson"
+PLATES_URL = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json"
+
+st.set_page_config(page_title="Earthquake Tracker", layout="wide")
+st.title("Live Earthquake Tracker")
+
+min_magnitude = st.sidebar.slider(
+    "Minimum Magnitude Threshold", 2.5, 9.0, 4.0, 0.1)
+
+
+@st.cache_data(ttl=3600)
+def load_data():
+    quakes = gpd.read_file(USGS_URL)
+    plates = gpd.read_file(PLATES_URL)
+    return quakes, plates
+
+
+try:
+    gdf_quakes, gdf_plates = load_data()
+    significant_quakes = gdf_quakes[gdf_quakes['mag'] >= min_magnitude]
+
+    st.sidebar.write(f"Total events (last 2.5 days): {len(gdf_quakes)}")
+    st.sidebar.write(f"Events shown: {len(significant_quakes)}")
+
+    if not significant_quakes.empty:
+        map_overlay = gdf_plates.explore(
+            color="blue",
+            style_kwds={"weight": 1.5},
+            name="Tectonic Plates"
+        )
+
+        significant_quakes.explore(
+            m=map_overlay,
+            column="mag",
+            cmap="autumn",
+            marker_kwds={"radius": 8},
+            tooltip=["place", "mag"],
+            name="Significant Earthquakes"
+        )
+
+        st_folium(map_overlay, width=1000, height=600)
+    else:
+        st.warning(f"No earthquakes met the criteria (>= {min_magnitude}).")
+
+except Exception as e:
+    st.error(f"An error occurred while fetching data: {e}")
