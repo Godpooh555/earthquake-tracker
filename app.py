@@ -1,6 +1,7 @@
 import streamlit as st
 import geopandas as gpd
 from streamlit_folium import st_folium
+import pandas as pd
 
 USGS_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson"
 PLATES_URL = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json"
@@ -21,7 +22,14 @@ def load_data():
 
 try:
     gdf_quakes, gdf_plates = load_data()
-    significant_quakes = gdf_quakes[gdf_quakes['mag'] >= min_magnitude]
+
+    significant_quakes = gdf_quakes[gdf_quakes['mag'] >= min_magnitude].copy() 
+    
+    significant_quakes['Depth Category'] = pd.cut(
+        significant_quakes['depth'],
+        bins=[-10, 33, 70, 300, 1000],
+        labels=['Shallow (<33km)', 'Intermediate (33-70km)', 'Deep (70-300km)', 'Ultra-Deep (>300km)']
+    )
     
     st.sidebar.write(f"Total events (last 2.5 days): {len(gdf_quakes)}")
     st.sidebar.write(f"Events shown: {len(significant_quakes)}")
@@ -35,14 +43,12 @@ try:
         
         significant_quakes.explore(
             m=map_overlay, 
-            column="depth",
+            column="Depth Category",  # Map the color to our new text categories
             cmap="viridis_r",
-            scheme="Quantiles", 
-            k=5, 
-            legend_kwds={"caption": "Depth (km)", "fmt": "{:.0f}"},
+            categorical=True,         # This is the magic word that fixes the legend!
             marker_kwds={"radius": 8},
             style_kwds={"style_function": lambda x: {"radius": int(x["properties"]["mag"]) * 2}},
-            tooltip=["place", "mag", "depth"],
+            tooltip=["place", "mag", "depth", "Depth Category"],
             name="Significant Earthquakes"
         )
         
